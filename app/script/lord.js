@@ -11,6 +11,7 @@ var utils = require(cwd + '/app/script/utils');
 var moveStat = require(cwd + '/app/script/statistic').moveStat;
 var attackStat = require(cwd + '/app/script/statistic').attackStat;
 var areaStat = require(cwd + '/app/script/statistic').areaStat;
+var onlineStat = require(cwd + '/app/script/statistic').onlineStat;
 var util = require('util');
 
 if (typeof Object.create !== 'function') {
@@ -387,6 +388,8 @@ var client = mysql.createConnection({
 
 var START = 'start';
 var END = 'end';
+var INCR = 'incr';
+var DECR = 'decr';
 var DirectionNum = 8;
 
 var EntityType = {
@@ -402,7 +405,8 @@ var ActFlagType = {
   ENTER_SCENE: 1,
   ATTACK: 2,
   MOVE: 3,
-  PICK_ITEM: 4
+  PICK_ITEM: 4,
+  ON_LINE: 5
 };
 
 var monitor = function (type, name, reqId) {
@@ -459,6 +463,8 @@ function queryEntry() {
         port: 3014,
         log: true
     }, function () {
+        monitor(START, 'online', ActFlagType.ON_LINE);
+
         // 连接成功之后，向gate服务器请求ip和port
         var route = "gate.gateHandler.queryEntry";
         pomelo.request(route, {
@@ -490,7 +496,6 @@ function queryEntry() {
                     icon: "icon3333",
                     nickname: "name222"
                 }, function (data) {
-                    console.log(data)
                     if (data.code === 200) {
                         pomelo.disconnect();
                         connector.port = data.port
@@ -507,7 +512,10 @@ function queryEntry() {
                                         uid: connector.uid,
                                         token: data.token
                                     }, function (data) {
-                                        console.log(data)
+                                        //出现在统计输入框
+                                        monitor(INCR, 'online', ActFlagType.ON_LINE);
+
+                                        monitor(END, 'online', ActFlagType.ON_LINE);
                                     });
                                 });
                             }
@@ -518,6 +526,14 @@ function queryEntry() {
         });
     });
 }
+
+pomelo.on('disconnect', function (reason) {
+    monitor(INCR, 'disconnect', ActFlagType.ON_LINE);
+});
+
+pomelo.on('close', function (reason) {
+    monitor(INCR, 'close', ActFlagType.ON_LINE);
+});
 
 
 queryEntry();
