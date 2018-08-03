@@ -369,7 +369,7 @@ var initData = function (data) {
 
 /////////////////////////////////////////////////////////////
 
-var queryHero = require(cwd + '/app/data/mysql').queryHero;
+// var queryHero = require(cwd + '/app/data/mysql').queryHero;
 var envConfig = require(cwd + '/app/config/env.json');
 var config = require(cwd + '/app/config/' + envConfig.env + '/config');
 var mysql = require('mysql');
@@ -423,36 +423,104 @@ if (typeof actor !== 'undefined') {
 
 // temporary code
 // queryHero(client, 1, offset, function(error, users){
-queryHero(client, 1, 0, function (error, users) {
-  // temporary code
-  console.log('QueryHero ~ offset = ', offset);
-  var user = users[0];
-  client.end();
-  // monitor(START, 'enterScene', ActFlagType.ENTER_SCENE);
-  console.log('QueryHero is running ...');
-  console.log('QueryHero ~ user = ', JSON.stringify(user));
-  if (user) {
-    queryEntry(user.uid, function (host, port) {
-      entry(host, port, user.token, function () {
-        connected = true;
-      });
-    });
-  }
-});
+// queryHero(client, 1, 0, function (error, users) {
+//   // temporary code
+//   console.log('QueryHero ~ offset = ', offset);
+//   var user = users[0];
+//   client.end();
+//   // monitor(START, 'enterScene', ActFlagType.ENTER_SCENE);
+//   console.log('QueryHero is running ...');
+//   console.log('QueryHero ~ user = ', JSON.stringify(user));
+//   if (user) {
+//     queryEntry(user.uid, function (host, port) {
+//       entry(host, port, user.token, function () {
+//         connected = true;
+//       });
+//     });
+//   }
+// });
+var crypto = require('crypto');
+var create= function(uid, timestamp) {
+    var msg = uid + '|' + timestamp;
+    var cipher = crypto.createCipher('aes256', "pomelo_development");
+    var enc = cipher.update(msg, 'utf8', 'hex');
+    enc += cipher.final('hex');
+    return enc;
+};
 
-function queryEntry(uid, callback) {
-  pomelo.init({ host: '127.0.0.1', port: 3014, log: true }, function () {
-    pomelo.request('gate.gateHandler.queryEntry', { uid: uid }, function (data) {
-      console.log('QueryEntry is running ...');
-      pomelo.disconnect();
-      if (data.code === 2001) {
-        console.log('Servers error!');
-        return;
-      }
-      callback(data.host, data.port);
+
+function queryEntry() {
+    var uid = Math.floor(Math.random() * 100000);
+    var token = create(uid, Date.now() / 1000)
+
+    console.log(token)
+    pomelo.init({
+        host: "172.17.132.172",
+        port: 3014,
+        log: true
+    }, function () {
+        // 连接成功之后，向gate服务器请求ip和port
+        var route = "gate.gateHandler.queryEntry";
+        pomelo.request(route, {
+            token: token,
+            imei: uid+""
+        }, function (data) {
+            console.log(data)
+            var connector = data
+            // 断开与gate服务器之间的连接
+            pomelo.disconnect();
+            console.log("主动断开链接")
+            if (data.code === 500) {
+                console.log("error")
+            }
+            //第二次
+            // 使用gate服务器返回的ip和port请求连接connector服务器
+            pomelo.init({
+                host: connector.host,
+                port: connector.port,
+                log: true,
+            }, function () {
+                // 连接成功之后,向connector服务器发送登录请求
+                pomelo.request("connector.entryHandler.enter", {
+                    token: token,
+                    islogin: 1,
+                    flag: "A",
+                    imei: "1" ,
+                    device: "pro",
+                    icon: "icon3333",
+                    nickname: "name222"
+                }, function (data) {
+                    console.log(data)
+                    if (data.code === 200) {
+                        pomelo.disconnect();
+                        connector.port = data.port
+                        connector.host = data.host
+                        connector.uid = data.uid
+                        setTimeout(function () {
+                                pomelo.init({
+                                    port: connector.port,
+                                    host: connector.host,
+                                    log: true
+                                }, function () {
+                                    // 连接成功之后,向connector服务器发送登录请求
+                                    pomelo.request("connector.entryHandler.enter2", {
+                                        uid: connector.uid,
+                                        token: data.token
+                                    }, function (data) {
+                                        console.log(data)
+                                    });
+                                });
+                            }
+                            , 100)
+                    }
+                });
+            });
+        });
     });
-  });
 }
+
+
+queryEntry();
 
 function entry(host, port, token, callback) {
   _host = host;

@@ -4,6 +4,10 @@
   "private": false,
   "description": "A distributed load test framework",
   "author": "<zgli@corp.netease.com>",
+  "scripts": {
+    "start server": "node app.js master",
+    "start client": "node app.js client"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/NetEase/pomelo-robot-demo"
