@@ -408,7 +408,9 @@ var ActFlagType = {
   MOVE: 3,
   PICK_ITEM: 4,
   ON_LINE: 5,
-  MATCH: 6
+  MATCH: 6,
+  ENTER_GAME: 7,
+  CHAT: 8
 };
 
 var monitor = function (type, name, reqId) {
@@ -454,11 +456,12 @@ var create= function(uid, timestamp) {
     return enc;
 };
 
-
+var __u = 0;
 function queryEntry() {
     //4901182
     console.log("----------------------------"+userId.total)
     var uid = 1000+(userId.total++);
+    __u = uid;
     // var uid = Math.floor(Math.random() * 100000)+1000;
     var token = create(uid, Date.now() / 1000)
 
@@ -557,6 +560,8 @@ function queryEntry() {
                                             }, function (data) {
                                               if(data.code === 200){
                                                   monitor(INCR, 'randomMatchSuc', ActFlagType.MATCH);
+                                              }else if(data.code===4006 || data.code===4008){
+                                                  monitor(INCR, 'randomMatchWait', ActFlagType.MATCH);
                                               }else {
                                                   monitor(INCR, 'randomMatchFail', ActFlagType.MATCH);
                                               }
@@ -566,7 +571,7 @@ function queryEntry() {
                                     });
                                 });
                             }
-                            , 100)
+                            , 0)
                     }
                 });
             });
@@ -579,9 +584,89 @@ pomelo.on('disconnect', function (reason) {
 });
 
 pomelo.on('close', function (reason) {
+    console.log("close.................")
     monitor(INCR, 'close', ActFlagType.ON_LINE);
 });
 
+pomelo.on('onMatch', function (data) {
+    /**
+     * { code: 200,
+  room: 1170,
+  game: 14,
+  userInfo:
+   [ { birth: '19900018',
+       icon: 'http://img.res.meizu.com/img/download/uc/11/35/22/19/60/113522196/w200h200?t=1531361414000',
+       id: 1000,
+       name: 'For_Someone_必应必应必应必应必应',
+       sex: 2,
+       type: 1 },
+     { birth: '',
+       icon: 'http://img.res.meizu.com/img/download/uc/76/80/76/40/00/7680764/w200h200?t=1511762994000',
+       id: 1001,
+       name: '用户30723056',
+       sex: 0,
+       type: 1 } ] }
+     */
+    console.log("onMatch...........")
+    console.log(data)
+    var room = data.room
+    var game = data.game
+
+    var playWith = 0;
+    if(data.code !== 200){
+        return;
+    }
+    if(data.userInfo[0].id === __u){
+        playWith=data.userInfo[1].id
+    }else {
+        playWith=data.userInfo[0].id
+    }
+
+
+    //匹配成功之后，双发调用进入游戏接口并发送10次消息给对方
+    setTimeout(function () {
+        monitor(START, 'enterGame', ActFlagType.ENTER_GAME);
+            pomelo.request("connector.gameHandler.enter", {
+            game:data.game,
+            cmd:1,
+            rid:data.room,
+            token:create(__u, Date.now() / 1000),
+            islogin:1,
+            flag:"A",
+            imei:"dsfdffddf",
+            num:2
+        }, function (data) {
+            console.log(data)
+        if (data.code === 200){
+            monitor(END, 'enterGame', ActFlagType.ENTER_GAME);
+            monitor(INCR, 'enterGameSuc', ActFlagType.MATCH);
+            console.log("进入游戏成功")
+            console.log(__u)
+            console.log(playWith)
+            //进入游戏成功后过10秒给对方发消息发10次
+            setTimeout(function () {
+                for(var i = 0;i<1;i++){
+                    //一次性发送太多会阻塞 导致下线
+                    monitor(START, 'pk', ActFlagType.CHAT);
+                    pomelo.request("chat.gameHandler.chat", {msg:"扶贫,党员,干部,修宪,中央,纪委,十九大,干部,习近平,李克强,栗战书,汪洋,王沪宁,赵乐际,韩正,国务院,共产党,党章,人大,两会,国民党,共产,毛泽东,毛主席,周恩来,朱德,彭德怀,林彪,刘伯承,贺龙,陈毅,罗荣桓,徐向前,聂荣臻,叶剑英,蒋介石,刘少奇,邓小平,四人帮,文革,江泽民,宪法,薄熙来,周永康,郭伯雄,孙政才,徐才厚,苏荣,周本顺,杨栋梁,苏树林,蒋洁敏,李东生,杨金山,令计划,项俊波,王三运,杨焕宁,吴爱英,张阳,房峰辉,杨晶,李春城,王永春,万庆良,陈川平,潘逸阳,朱明国,王敏,杨卫泽,范长秘,仇和,余远辉,吕锡文,李云峰,牛志忠,杨崇勇,张喜武,莫建成,孙怀山,夏兴华,虞海燕,李立国,窦玉沛,王银成,杨东平,李文科,陈旭,张化为,陈传书,周春雨,魏民洲,杨家才,刘新齐,曲淑辉,刘善桥,张喜武,王宏江,周化辰,许前飞,杨焕宁,李刚,夏崇源,何挺,沐华平,鲁炜,刘强,张杰辉,党的领导,改革,中国特色社会主义,法治建设,法制建设,核心价值观,中共中央,人民代表大会,中国共产党,检查委员会,中央委员会,新时代,党和国家,中华民族伟大复兴,中央委员,常委,纲领,领导人中国梦,依法治国,法治中国,从严治党,基本国策,全会,丁薛祥,王晨,王沪宁,刘鹤,许其亮,孙春兰,李希,李强,李鸿忠,杨洁篪,杨晓渡,汪洋,张又侠,陈希,陈全国,陈敏尔,赵乐际,胡春华,郭声琨,黄坤明,蔡奇, 马凯,王岐山,刘云山,刘延东,刘奇葆,许其亮,孙春兰,孙政才,杨晓渡,尤权,魏凤和,李作成,苗华,张升民,李建国,李源潮,张春贤,张高丽,张德江,范长龙,孟建柱,赵乐际,胡春华,俞正声,郭金龙,习仲勋,十九届三中全会,违纪,撤职,处分,打虎",imei:"343"},
+                        function (data) {
+                            monitor(END, 'pk', ActFlagType.CHAT);
+                        if(data.code === 200){
+                            monitor(INCR, 'pkSuc', ActFlagType.CHAT);
+                        }else {
+                            monitor(INCR, 'pkFail', ActFlagType.CHAT);
+                        }
+                });
+                }
+            },10*__u)
+        }else {
+            monitor(INCR, 'enterGameFail', ActFlagType.MATCH);
+            console.log("进入游戏失败")
+        }
+    });
+    },100)
+
+});
 
 queryEntry();
 
