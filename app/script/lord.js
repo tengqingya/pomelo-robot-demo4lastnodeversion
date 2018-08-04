@@ -12,6 +12,7 @@ var moveStat = require(cwd + '/app/script/statistic').moveStat;
 var attackStat = require(cwd + '/app/script/statistic').attackStat;
 var areaStat = require(cwd + '/app/script/statistic').areaStat;
 var onlineStat = require(cwd + '/app/script/statistic').onlineStat;
+var userId = require(cwd + '/app/script/statistic').userId;
 var util = require('util');
 
 if (typeof Object.create !== 'function') {
@@ -406,7 +407,8 @@ var ActFlagType = {
   ATTACK: 2,
   MOVE: 3,
   PICK_ITEM: 4,
-  ON_LINE: 5
+  ON_LINE: 5,
+  MATCH: 6
 };
 
 var monitor = function (type, name, reqId) {
@@ -454,7 +456,10 @@ var create= function(uid, timestamp) {
 
 
 function queryEntry() {
-    var uid = Math.floor(Math.random() * 100000);
+    //4901182
+    console.log("----------------------------"+userId.total)
+    var uid = 1000+(userId.total++);
+    // var uid = Math.floor(Math.random() * 100000)+1000;
     var token = create(uid, Date.now() / 1000)
 
     console.log(token)
@@ -469,7 +474,7 @@ function queryEntry() {
         var route = "gate.gateHandler.queryEntry";
         pomelo.request(route, {
             token: token,
-            imei: uid+""
+            imei: uid + ""
         }, function (data) {
             console.log(data)
             var connector = data
@@ -491,7 +496,7 @@ function queryEntry() {
                     token: token,
                     islogin: 1,
                     flag: "A",
-                    imei: "1" ,
+                    imei: "1",
                     device: "pro",
                     icon: "icon3333",
                     nickname: "name222"
@@ -501,6 +506,7 @@ function queryEntry() {
                         connector.port = data.port
                         connector.host = data.host
                         connector.uid = data.uid
+                        console.log("uid       " + data.uid)
                         setTimeout(function () {
                                 pomelo.init({
                                     port: connector.port,
@@ -514,8 +520,49 @@ function queryEntry() {
                                     }, function (data) {
                                         //出现在统计输入框
                                         monitor(INCR, 'online', ActFlagType.ON_LINE);
-
+                                        onlineStat.total++;
                                         monitor(END, 'online', ActFlagType.ON_LINE);
+                                        //匹配
+                                        setTimeout(function () {
+                                            monitor(START, 'match', ActFlagType.MATCH);
+                                            var __gid = [1997,14,15,16];
+                                            //计算传入游戏的数量
+                                            var gameNum = Math.floor(Math.random() * 3)+1
+                                            console.log("gameNum " + gameNum)
+                                            //计算游戏的顺序
+                                            var firstGame = Math.floor(Math.random() * 4)
+                                            console.log("firstGame " + firstGame)
+                                            var games = [];
+                                            for (var g in __gid) {
+                                                var __g = parseInt(g)
+                                                if ((__g === firstGame) && __g !== 0) {
+                                                    continue;
+                                                }
+                                                if (games.length === 0) {
+                                                    games.push(__gid[firstGame])
+                                                } else {
+                                                    games.push(__gid[g])
+                                                }
+                                                if ((__g + 1) === gameNum) {
+                                                    console.log("break...")
+                                                    break;
+                                                }
+                                            }
+                                            console.log(games)
+                                            pomelo.request("connector.matchEntryHandler.match", {
+                                                gid: games,
+                                                cmd: 1,
+                                                imei: "2323232434334",
+                                                num: 2
+                                            }, function (data) {
+                                              if(data.code === 200){
+                                                  monitor(INCR, 'randomMatchSuc', ActFlagType.MATCH);
+                                              }else {
+                                                  monitor(INCR, 'randomMatchFail', ActFlagType.MATCH);
+                                              }
+                                                monitor(END, 'match', ActFlagType.MATCH);
+                                            });
+                                        }, 0)
                                     });
                                 });
                             }
