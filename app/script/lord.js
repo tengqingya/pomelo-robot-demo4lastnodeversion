@@ -450,7 +450,7 @@ if (typeof actor !== 'undefined') {
 var crypto = require('crypto');
 var create= function(uid, timestamp) {
     var msg = uid + '|' + timestamp;
-    var cipher = crypto.createCipher('aes256', "pomelo_development");
+    var cipher = crypto.createCipher('aes256', "pomelo_test_master");
     var enc = cipher.update(msg, 'utf8', 'hex');
     enc += cipher.final('hex');
     return enc;
@@ -465,9 +465,8 @@ function queryEntry() {
     // var uid = Math.floor(Math.random() * 100000)+1000;
     var token = create(uid, Date.now() / 1000)
 
-    console.log(token)
     pomelo.init({
-        host: "172.17.132.172",
+        host: "172.16.185.86",
         port: 3014,
         log: true
     }, function () {
@@ -479,11 +478,9 @@ function queryEntry() {
             token: token,
             imei: uid + ""
         }, function (data) {
-            console.log(data)
             var connector = data
             // 断开与gate服务器之间的连接
             pomelo.disconnect();
-            console.log("主动断开链接")
             if (data.code === 500) {
                 console.log("error")
             }
@@ -531,10 +528,8 @@ function queryEntry() {
                                             var __gid = [1997,14,15,16];
                                             //计算传入游戏的数量
                                             var gameNum = Math.floor(Math.random() * 3)+1
-                                            console.log("gameNum " + gameNum)
                                             //计算游戏的顺序
                                             var firstGame = Math.floor(Math.random() * 4)
-                                            console.log("firstGame " + firstGame)
                                             var games = [];
                                             for (var g in __gid) {
                                                 var __g = parseInt(g)
@@ -551,7 +546,6 @@ function queryEntry() {
                                                     break;
                                                 }
                                             }
-                                            console.log(games)
                                             pomelo.request("connector.matchEntryHandler.match", {
                                                 gid: games,
                                                 cmd: 1,
@@ -607,22 +601,10 @@ pomelo.on('onMatch', function (data) {
        sex: 0,
        type: 1 } ] }
      */
-    console.log("onMatch...........")
-    console.log(data)
-    var room = data.room
-    var game = data.game
 
-    var playWith = 0;
     if(data.code !== 200){
         return;
     }
-    if(data.userInfo[0].id === __u){
-        playWith=data.userInfo[1].id
-    }else {
-        playWith=data.userInfo[0].id
-    }
-
-
     //匹配成功之后，双发调用进入游戏接口并发送10次消息给对方
     setTimeout(function () {
         monitor(START, 'enterGame', ActFlagType.ENTER_GAME);
@@ -636,13 +618,10 @@ pomelo.on('onMatch', function (data) {
             imei:"dsfdffddf",
             num:2
         }, function (data) {
-            console.log(data)
         if (data.code === 200){
             monitor(END, 'enterGame', ActFlagType.ENTER_GAME);
             monitor(INCR, 'enterGameSuc', ActFlagType.MATCH);
             console.log("进入游戏成功")
-            console.log(__u)
-            console.log(playWith)
             //进入游戏成功后过10秒给对方发消息发10次
             setTimeout(function () {
                 for(var i = 0;i<10;i++){
@@ -661,7 +640,6 @@ pomelo.on('onMatch', function (data) {
             },10*__u)
         }else {
             monitor(INCR, 'enterGameFail', ActFlagType.MATCH);
-            console.log("进入游戏失败")
         }
     });
     },100)
