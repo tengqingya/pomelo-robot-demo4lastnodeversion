@@ -5,8 +5,15 @@
   "description": "A distributed load test framework",
   "author": "<zgli@corp.netease.com>",
   "scripts": {
-    "start server": "node app.js master",
-    "start client": "node app.js client"
+    "start server": "node app.js master 3",
+    "start client1": "node app.js client 4",
+    "start client2": "node app.js client 5",
+    "start client3": "node app.js client 6",
+    "start client4": "node app.js client 7",
+    "start client5": "node app.js client 8",
+    "start client6": "node app.js client 9",
+    "start client7": "node app.js client 10",
+    "start client8": "node app.js client 11"
   },
   "repository": {
     "type": "git",

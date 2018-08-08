@@ -447,10 +447,12 @@ if (typeof actor !== 'undefined') {
 //     });
 //   }
 // });
+
+var __ii = process.argv[3]
 var crypto = require('crypto');
 var create= function(uid, timestamp) {
     var msg = uid + '|' + timestamp;
-    var cipher = crypto.createCipher('aes256', "pomelo_test_master");
+    var cipher = crypto.createCipher('aes256', "pomelo_test_xn");
     var enc = cipher.update(msg, 'utf8', 'hex');
     enc += cipher.final('hex');
     return enc;
@@ -460,13 +462,15 @@ var __u = 0;
 function queryEntry() {
     //4901182
     console.log("----------------------------"+userId.total)
-    var uid = 1000+(userId.total++);
+    var uid = (10000*__ii) +(userId.total++) + 476311312;
     __u = uid;
     // var uid = Math.floor(Math.random() * 100000)+1000;
     var token = create(uid, Date.now() / 1000)
 
     pomelo.init({
-        host: "172.16.185.86",
+        host: "172.16.194.40",
+        // host: "172.16.185.86",
+        // host: "172.17.132.172",
         port: 3014,
         log: true
     }, function () {
@@ -476,7 +480,7 @@ function queryEntry() {
         var route = "gate.gateHandler.queryEntry";
         pomelo.request(route, {
             token: token,
-            imei: uid + ""
+            imei: "2"
         }, function (data) {
             var connector = data
             // 断开与gate服务器之间的连接
@@ -525,11 +529,11 @@ function queryEntry() {
                                         //匹配
                                         setTimeout(function () {
                                             monitor(START, 'match', ActFlagType.MATCH);
-                                            var __gid = [1997,14,15,16];
+                                            var __gid = [475804848,475804849,475804850,475804851,475804852,475804853];
                                             //计算传入游戏的数量
-                                            var gameNum = Math.floor(Math.random() * 3)+1
+                                            var gameNum = Math.floor(Math.random() * 5)+1
                                             //计算游戏的顺序
-                                            var firstGame = Math.floor(Math.random() * 4)
+                                            var firstGame = Math.floor(Math.random() * 6)
                                             var games = [];
                                             for (var g in __gid) {
                                                 var __g = parseInt(g)
@@ -542,7 +546,6 @@ function queryEntry() {
                                                     games.push(__gid[g])
                                                 }
                                                 if ((__g + 1) === gameNum) {
-                                                    console.log("break...")
                                                     break;
                                                 }
                                             }
@@ -557,6 +560,7 @@ function queryEntry() {
                                               }else if(data.code===4006 || data.code===4008){
                                                   monitor(INCR, 'randomMatchWait', ActFlagType.MATCH);
                                               }else {
+                                                  console.log(data)
                                                   monitor(INCR, 'randomMatchFail', ActFlagType.MATCH);
                                               }
                                                 monitor(END, 'match', ActFlagType.MATCH);
@@ -566,6 +570,8 @@ function queryEntry() {
                                 });
                             }
                             , 0)
+                    }else {
+                        console.log(data)
                     }
                 });
             });
@@ -578,7 +584,6 @@ pomelo.on('disconnect', function (reason) {
 });
 
 pomelo.on('close', function (reason) {
-    console.log("close.................")
     monitor(INCR, 'close', ActFlagType.ON_LINE);
 });
 
@@ -605,13 +610,19 @@ pomelo.on('onMatch', function (data) {
     if(data.code !== 200){
         return;
     }
+    var __game = data.game
+    var __room = data.room;
+    var __uids =[]
+    __uids.push(data['userInfo'][0].id)
+    __uids.push(data['userInfo'][1].id)
+
     //匹配成功之后，双发调用进入游戏接口并发送10次消息给对方
     setTimeout(function () {
         monitor(START, 'enterGame', ActFlagType.ENTER_GAME);
             pomelo.request("connector.gameHandler.enter", {
-            game:data.game,
+            game:__game,
             cmd:1,
-            rid:data.room,
+            rid:__room,
             token:create(__u, Date.now() / 1000),
             islogin:1,
             flag:"A",
@@ -621,7 +632,6 @@ pomelo.on('onMatch', function (data) {
         if (data.code === 200){
             monitor(END, 'enterGame', ActFlagType.ENTER_GAME);
             monitor(INCR, 'enterGameSuc', ActFlagType.MATCH);
-            console.log("进入游戏成功")
             //进入游戏成功后过10秒给对方发消息发10次
             setTimeout(function () {
                 for(var i = 0;i<10;i++){
@@ -637,9 +647,34 @@ pomelo.on('onMatch', function (data) {
                         }
                 });
                 }
-            },10*__u)
+                //过一会断线
+                setTimeout(function () {
+                    //先结束游戏再断线
+                    pomelo.request("chat.gameHandler.over", {
+                        game:__game,
+                        room:__room,
+                        uids:__uids,
+                        ranks:"2,1",
+                        scores:"0,0", //得分or时间
+                        type:1   // 2：认输结束，1：正常结束，-1：异常结束
+                    }, function (data) {
+                        console.log("游戏结束")
+                        console.log(JSON.stringify(data))
+                        if(data.code === 200){
+                            monitor(INCR, 'gameOverSuc', ActFlagType.CHAT);
+                        }else {
+                            monitor(INCR, 'gameOverFail', ActFlagType.CHAT);
+                        }
+                        pomelo.disconnect();
+                        monitor(INCR, 'disconnectBySelf', ActFlagType.CHAT);
+                });
+                },(Math.floor(Math.random() * 1000) + 3600));
+            },(Math.floor(Math.random() * 1000) + 3600))
         }else {
             monitor(INCR, 'enterGameFail', ActFlagType.MATCH);
+            console.log("进入游戏失败")
+            console.log(JSON.stringify(data))
+            console.log(data)
         }
     });
     },100)
